@@ -28,7 +28,7 @@ def main():
             # # Hidden layer 3
             # Layer(shape=100, activation='relu', input_size=100),
             # Output layer
-            Layer(shape=1, activation='relu', input_size=100)],
+            Layer(shape=2, activation='relu', input_size=100)],
             # Features and labels
             features=X, labels=y
         )
