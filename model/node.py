@@ -25,9 +25,11 @@ class Node:
         self.output = []
         if isinstance(shape, tuple):
             self.weights = np.ones(1)
+            self.weight_delta = np.zeros(1)
             self.delta = np.zeros(1)
         else:
             self.weights = he_initialization(input_size)
+            self.weight_delta = np.zeros(input_size)
             #self.weights = random_seeded(input_size)
             self.delta = np.zeros(shape)
         self.activation_function = activation

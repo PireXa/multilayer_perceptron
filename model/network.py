@@ -12,7 +12,7 @@ class Network:
         self.features = features
         self.labels = labels
         self.predictions = None
-        self.learning_rate = 0.01
+        self.learning_rate = 0.001
         self.iterations = []
         self.gradients = []
         self.predictions = []
@@ -21,7 +21,7 @@ class Network:
         self.last_prediction = 0.00
         self.last_cost = 1.00
         self.label_list = []
-        self.cost = []
+        self.loss = []
 
     def print_network(self):
         for i in range(len(self.layers)):
@@ -48,11 +48,27 @@ class Network:
             # print(n)
             # print(self.predictions)
 
-            cost = np.sum((self.labels - self.predictions) ** 2) / n
+            # cost = np.sum((self.labels - self.predictions) ** 2) / n
+            cost = np.sum((self.predictions - self.labels) ** 2) / n
             if cost < self.best_cost:
                 self.best_cost = cost
                 self.best_prediction = self.evaluate()
             return cost
+
+    def compute_cost_cross_entropy(self):
+        """
+        Function to compute the cost of the network using the following formula:
+        -y log(ŷ) - (1 - y) log(1 - ŷ)
+        """
+        n = len(self.labels)
+
+        # print('output', self.layers[-1].nodes[1].output)
+        # print('predictions', self.predictions)
+        # print('labels', self.labels)
+        # cost = -1/n * np.sum(self.labels * np.log(self.predictions + 1e15) + (1 - self.labels) * np.log(1 - self.predictions + 1e15))
+        cost = np.mean(-self.labels * np.log(self.predictions + 1e-15) - (1 - self.labels) * np.log(1 - self.predictions + 1e-15))
+        # print('cost', cost)
+        return cost
 
     def feedforward(self):
         input = self.feed_input()
@@ -63,7 +79,6 @@ class Network:
             next_input = []
             for j in range(len(self.layers[i].nodes)):
                 # weighted_sum = np.dot(input, self.layers[i].nodes[j].weights.T)
-                # print('weights', self.layers[i].nodes[j].weights)
                 # print('input', input.T)
                 weighted_sum = np.dot(self.layers[i].nodes[j].weights, input.T)
                 # print('Weighted Sum', weighted_sum)
@@ -156,10 +171,11 @@ class Network:
         # print(input)
 
     def backpropagation(self):
-        print('Predictions', self.predictions)
+        # print('Predictions', self.predictions)
         for i in range(len(self.layers[-1].nodes)):
             self.label_list = np.array(self.label_list)
             prediction = np.clip(self.layers[-1].nodes[i].output, 1e-15, 1 - 1e-15)
+            # prediction = self.layers[-1].nodes[i].output
             # print('prediction', prediction)
             # print('label', self.label_list[:, i])
             # print('single predictions', prediction * self.label_list[:, i])
@@ -172,9 +188,9 @@ class Network:
             # print('loss 2', loss / len(self.label_list))
             # print('derivative', self.layers[-1].nodes[i].activation_derivative(self.layers[-1].nodes[i].output))
 
-            print('label', self.label_list[:, i])
-            print('prediction', prediction)
-            #make an array with all the predictions where the label is 1
+            # print('label', self.label_list[:, i])
+            # print('prediction', prediction)
+            # make an array with all the predictions where the label is 1
             # true_predictions = prediction[self.label_list[:, i] == 1]
             # true_labels = self.label_list[:, i][self.label_list[:, i] == 1]
             # print('true predictions', true_predictions)
@@ -185,19 +201,21 @@ class Network:
             # self.layers[-1].nodes[i].delta = true_predictions - true_labels
             # self.layers[-1].nodes[i].delta = -np.log(prediction) @ self.label_list[:, i]
             # self.layers[-1].nodes[i].delta = self.label_list[:, i] - self.label_list[:, i]
-            print('delta', self.layers[-1].nodes[i].delta)
-            self.layers[-1].nodes[i].delta = np.mean(self.layers[-1].nodes[i].delta)
-            print('delta', self.layers[-1].nodes[i].delta)
-            print('\n\n')
+            # print('delta', self.layers[-1].nodes[i].delta)
+            # self.layers[-1].nodes[i].delta = np.mean(self.layers[-1].nodes[i].delta)
+            # print('delta', self.layers[-1].nodes[i].delta)
+            # print('\n\n')
 
         for i in range(len(self.layers) - 2, 0, -1):
             for j in range(len(self.layers[i].nodes)):
-                # activation_derivative = self.layers[i].nodes[j].activation_derivative(self.layers[i].nodes[j].output)
+                activation_derivative = self.layers[i].nodes[j].activation_derivative(self.layers[i].nodes[j].output)
                 # print(self.layers[i + 1].nodes[j].weights.shape, self.layers[i + 1].nodes[j].delta.shape)
                 gradient = 0
                 for k in range(len(self.layers[i + 1].nodes)):
-                    gradient += self.layers[i + 1].nodes[k].weights[j] * self.layers[i + 1].nodes[k].delta
+                    gradient += self.layers[i + 1].nodes[k].weights[j] * self.layers[i + 1].nodes[k].delta * activation_derivative
                 # self.layers[i].nodes[j].delta = activation_derivative * sum
+                # print('gradient', gradient)
+                # dd
                 self.layers[i].nodes[j].delta = gradient
 
     def update_weights(self):
@@ -208,17 +226,26 @@ class Network:
                     # print(self.learning_rate, self.layers[i].nodes[j].delta)
                     # print(self.layers[i - 1].nodes[j].delta.shape)
                     # print(self.layers[i].nodes[j].delta.shape, self.layers[i - 1].nodes[j].output.shape)
-                    # step = np.dot(self.layers[i].nodes[j].delta.T, self.layers[i - 1].nodes[k].output)
+                    step = np.dot(self.layers[i].nodes[j].delta, self.layers[i - 1].nodes[k].output)
+                    # print('step', step)
                     # print('delta', self.layers[i].nodes[j].delta)
                     # print('output', self.layers[i - 1].nodes[k].output)
-                    # step = self.layers[i].nodes[j].delta * self.layers[i - 1].nodes[k].output
+                    # step = self.layers[i].nodes[j].delta @ self.layers[i - 1].nodes[k].output
                     # print('step', step)
+                    # step = step / len(self.layers[i].nodes[j].delta)
+                    # print('step', step)
+
                     # print('step', step)
                     # print(self.layers[i].nodes[j].weights[k])
                     # print('learning rate', self.learning_rate)
                     # print('delta', self.layers[i].nodes[j].delta)
                     # if i == 2 and j == 0:
-                    self.layers[i].nodes[j].weights[k] -= self.learning_rate * self.layers[i].nodes[j].delta
+                    # print('weights', k, self.layers[i].nodes[j].weights[k])
+                    # print('step', step)
+                    # print('learning rate', self.learning_rate)
+                    self.layers[i].nodes[j].weights[k] -= self.learning_rate * step
+                    # print('weights', k, self.layers[i].nodes[j].weights[k])
+                    # self.layers[i].nodes[j].weights[k] -= self.learning_rate * np.mean(self.layers[i].nodes[j].delta)
                     # if i == 2 and j == 0:
                     #     print('weights', k, self.layers[i].nodes[j].weights[k])
         
@@ -231,28 +258,31 @@ class Network:
                 self.label_list.append([0, 1])
         # print('Labels', self.label_list)
         print("Training Started")
+        print('Examples', len(self.features))
         for i in range(epochs):
             # print('Epoch', i)
             # for j in range(len(self.layers)):
                 # print('Layer', j)
                 # print('Nodes', len(self.layers[j].nodes))
             self.feedforward()
-            if i % 1 == 0:
+            if i % 10 == 0:
                 print("Epoch: ", i, " Cost: ", self.compute_cost())
+                print("Cross Entropy Cost: ", self.compute_cost_cross_entropy())
+                # print("\n\n")
             # d3
             self.iterations.append((i, self.compute_cost()))
             self.backpropagation()
             self.update_weights()
-            self.cost.append((i, self.layers[-1].nodes[0].delta))
+            self.loss.append((i, np.abs(np.mean(self.layers[-1].nodes[0].delta))))
             # print('predicts', self.predictions)
             # print('\n\n\n')
-            if i == 200:
-                self.plot_error()
-                dd
+            # if i == 1000:
+            #     self.plot_error()
+            #     dd
             # for j in range(len(self.layers)):
                 # for k in range(len(self.layers[j].nodes)):
                     # self.layers[j].nodes[k].output = []
-        print('self.predictions', self.predictions)
+        # print('self.predictions', self.predictions)
 
     def evaluate(self):
         """
@@ -277,12 +307,12 @@ class Network:
         plt.grid(True)
         plt.show()
 
-    def plot_error(self):
+    def plot_loss(self):
         """
         Plot the cost evaluation
         """
-        x = [item[0] for item in self.cost]
-        y = [item[1] for item in self.cost]
+        x = [item[0] for item in self.loss]
+        y = [item[1] for item in self.loss]
 
         # Plot the data as a scatter graph
         plt.scatter(x, y)
