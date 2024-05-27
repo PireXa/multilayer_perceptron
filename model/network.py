@@ -1,5 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
+from sklearn.preprocessing import MinMaxScaler
 
 
 class Network:
@@ -130,6 +132,8 @@ class Network:
         # print('weighted_sum_2', weighted_sum_2)
         output_node1 = weighted_sum_1
         output_node2 = weighted_sum_2
+        # output_node1 = self.layers[-1].nodes[0].activation(weighted_sum_1)
+        # output_node2 = self.layers[-1].nodes[1].activation(weighted_sum_2)
         # print('output_node1', output_node1)
         # print('output_node2', output_node2)
 
@@ -140,7 +144,7 @@ class Network:
         # output_node1 = np.exp(output_node1)
         # output_node1 = output_node1 / np.sum(output_node1)
         # self.layers[-1].nodes[0].output = output_node1
-        # self.predictions = np.array([0 if output_node1[i] > 0.5 else 1 for i in range(len(output_node1))])
+        self.predictions = np.array([0 if output_node1[i] > 0.5 else 1 for i in range(len(output_node1))])
 
         for i in range(len(pairs)):
             # print('pair', pairs[i])
@@ -167,7 +171,8 @@ class Network:
         # print('len input', input.shape)
         # self.predictions = np.array([1 if output[0] > output[1] else 0 for output in input])
         self.predictions = np.array([0 if softmax_values_1[i] > softmax_values_2[i] else 1 for i in range(len(softmax_values_1))])
-        # print('Predictions: ', self.predictions)
+        # for i in range(len(self.predictions)):
+            # print('prediction', self.predictions[i], 'label', self.labels[i])
         # print(input)
 
     def backpropagation(self):
@@ -321,6 +326,47 @@ class Network:
         plt.title('Error evaluation')
         plt.grid(True)
         plt.show()
+
+    def evaluation(self, file):
+        df = pd.read_csv(file)
+
+        y = df.iloc[:, 1].values
+        y = np.array([0.00 if label == 'M' else 1.00 for label in y])
+        X = df.iloc[:, 2:32].values
+        X = np.nan_to_num(X)
+        scaler = MinMaxScaler(copy=False)
+        X = scaler.fit_transform(X)
+        predictions = []
+        for i in range(len(X)):
+            input = X[i]
+            for i in range(1, len(self.layers) - 1):
+                next_input = []
+                for j in range(len(self.layers[i].nodes)):
+                    weighted_sum = np.dot(self.layers[i].nodes[j].weights, input.T)
+                    self.layers[i].nodes[j].output = self.layers[i].nodes[j].activation(weighted_sum)
+                    next_input.append(self.layers[i].nodes[j].output)
+                input = np.array(next_input).T
+            weighted_sum_1 = np.dot(self.layers[-1].nodes[0].weights, input.T)
+            weighted_sum_2 = np.dot(self.layers[-1].nodes[1].weights, input.T)
+            output_node1 = weighted_sum_1
+            output_node2 = weighted_sum_2
+            pairs = np.array([[output_node1, output_node2]])
+            for i in range(len(pairs)):
+                pairs[i] = pairs[i] - np.max(pairs[i])
+                pairs[i] = np.exp(pairs[i])
+                pairs[i] = pairs[i] / np.sum(pairs[i])
+            softmax_values_1 = pairs[:, 0]
+            softmax_values_2 = pairs[:, 1]
+            self.layers[-1].nodes[0].output = softmax_values_1
+            self.layers[-1].nodes[1].output = softmax_values_2
+            predictions.append(np.array([0 if softmax_values_1[i] > softmax_values_2[i] else 1 for i in range(len(softmax_values_1))]))
+        predictions = np.array(predictions)
+        predictions = np.concatenate(predictions)
+        print('Predictions', predictions)
+        print('Labels', y)
+        accuracy = np.mean(predictions == y)
+        print('Accuracy: ', accuracy)
+        return accuracy
 
     def __str__(self):
         # Print each one of the layers of the network

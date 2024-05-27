@@ -58,6 +58,7 @@ def main():
         # if network.best_cost < network.iterations[-1][1]:
         network.plot_cost()
         network.plot_loss()
+        network.evaluation('data/test.csv')
 
 if __name__ == '__main__':
     main()
